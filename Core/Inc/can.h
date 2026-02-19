@@ -1,15 +1,21 @@
-/*
- *  can.h
+/**
+ * @file can.h
+ * @author Alexis COGNET (alexis.cognet@sii.fr)
  *
- *  Created on: 17 févr. 2026
- *  Author: alexis.cognet
+ * @brief Implements all functions related to CAN communications (sending and
+ * receiving).
+ *
+ * This file defines an interface to the CAN communication module.
+ * There are two type of @ref MESSAGE_TYPE that can be sent.
  */
 
 #ifndef INC_CAN_H_
 #define INC_CAN_H_
 
-#include "stm32u5xx_hal_fdcan.h"
+#include "stm32u5xx_hal.h"
+#include <stdbool.h>
 #include <stdint.h>
+
 enum MESSAGE_TYPE {
   ALERT_WARNING,
   ALERT_CRITICAL,
@@ -25,8 +31,7 @@ enum MESSAGE_TYPE {
  * @param type The type of message to be sent (see MESSAGE_TYPE enum).
  * @return true if message was successefuly sent, false otherwise.
  */
-void SendMessage(FDCAN_HandleTypeDef hfdcan1, uint8_t TxData[1],
-                 enum MESSAGE_TYPE type);
+bool SendMessage(uint8_t TxData[1], enum MESSAGE_TYPE type);
 
 /**
  * @brief Handle received CAN message.

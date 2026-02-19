@@ -18,8 +18,10 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "stm32u5xx_hal_fdcan.h"
-#include "stm32u5xx_hal_uart.h"
+#include "logger.h"
+#include "stm32u5xx.h"
+#include "stm32u5xx_hal.h"
+#include "utils.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -56,6 +58,10 @@ I2C_HandleTypeDef hi2c2;
 OSPI_HandleTypeDef hospi1;
 OSPI_HandleTypeDef hospi2;
 
+RTC_HandleTypeDef hrtc;
+RTC_TimeTypeDef sTime = {0};
+RTC_DateTypeDef sDate = {0};
+
 SPI_HandleTypeDef hspi2;
 
 UART_HandleTypeDef huart4;
@@ -82,6 +88,7 @@ static void MX_USART1_UART_Init(void);
 static void MX_UCPD1_Init(void);
 static void MX_USB_OTG_FS_PCD_Init(void);
 static void MX_FDCAN1_Init(void);
+static void MX_RTC_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -134,29 +141,29 @@ int main(void) {
   MX_UCPD1_Init();
   MX_USB_OTG_FS_PCD_Init();
   MX_FDCAN1_Init();
+  MX_RTC_Init();
   /* USER CODE BEGIN 2 */
   // STart FDCAN1
   if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK) {
-    char msg[] = "Can't start FDCAN\r\n";
-    uint16_t len = strlen(msg);
-    HAL_UART_Transmit(&huart1, (uint8_t *)msg, len, 1000);
+    sendUSART1Message("");
+    LOG(FAULT, "Can't start FDCAN\r\n");
   }
   if (HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE,
                                      0)) {
-    char msg[] = "Can't activate notifications for FDCAN\r\n";
-    uint16_t len = strlen(msg);
-    HAL_UART_Transmit(&huart1, (uint8_t *)msg, len, 1000);
+    LOG(FAULT, "Can't activate notifications for FDCAN\r\n");
   }
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  int count = 0;
   while (1) {
     /* USER CODE END WHILE */
+
     /* USER CODE BEGIN 3 */
-    char *msg = "hello world\r\n";
-    uint16_t len = strlen(msg);
-    HAL_UART_Transmit(&huart1, (uint8_t *)msg, len, 1000);
+    LOG(INFO, "Hello World ! #%d\r\n", count);
+
+    count++;
   }
   /* USER CODE END 3 */
 }
@@ -175,11 +182,17 @@ void SystemClock_Config(void) {
     Error_Handler();
   }
 
+  /** Configure LSE Drive Capability
+   */
+  HAL_PWR_EnableBkUpAccess();
+  __HAL_RCC_LSEDRIVE_CONFIG(RCC_LSEDRIVE_LOW);
+
   /** Initializes the CPU, AHB and APB buses clocks
    */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI48 |
-                                     RCC_OSCILLATORTYPE_HSI |
-                                     RCC_OSCILLATORTYPE_MSI;
+  RCC_OscInitStruct.OscillatorType =
+      RCC_OSCILLATORTYPE_HSI48 | RCC_OSCILLATORTYPE_HSI |
+      RCC_OSCILLATORTYPE_LSE | RCC_OSCILLATORTYPE_MSI;
+  RCC_OscInitStruct.LSEState = RCC_LSE_ON_RTC_ONLY;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSI48State = RCC_HSI48_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
@@ -506,6 +519,75 @@ static void MX_OCTOSPI2_Init(void) {
   /* USER CODE BEGIN OCTOSPI2_Init 2 */
 
   /* USER CODE END OCTOSPI2_Init 2 */
+}
+
+/**
+ * @brief RTC Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_RTC_Init(void) {
+
+  /* USER CODE BEGIN RTC_Init 0 */
+
+  /* USER CODE END RTC_Init 0 */
+
+  RTC_PrivilegeStateTypeDef privilegeState = {0};
+  RTC_TimeTypeDef sTime = {0};
+  RTC_DateTypeDef sDate = {0};
+
+  /* USER CODE BEGIN RTC_Init 1 */
+
+  /* USER CODE END RTC_Init 1 */
+
+  /** Initialize RTC Only
+   */
+  hrtc.Instance = RTC;
+  hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
+  hrtc.Init.AsynchPrediv = 127;
+  hrtc.Init.SynchPrediv = 255;
+  hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
+  hrtc.Init.OutPutRemap = RTC_OUTPUT_REMAP_NONE;
+  hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
+  hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
+  hrtc.Init.OutPutPullUp = RTC_OUTPUT_PULLUP_NONE;
+  hrtc.Init.BinMode = RTC_BINARY_NONE;
+  if (HAL_RTC_Init(&hrtc) != HAL_OK) {
+    Error_Handler();
+  }
+  privilegeState.rtcPrivilegeFull = RTC_PRIVILEGE_FULL_NO;
+  privilegeState.backupRegisterPrivZone = RTC_PRIVILEGE_BKUP_ZONE_NONE;
+  privilegeState.backupRegisterStartZone2 = RTC_BKP_DR0;
+  privilegeState.backupRegisterStartZone3 = RTC_BKP_DR0;
+  if (HAL_RTCEx_PrivilegeModeSet(&hrtc, &privilegeState) != HAL_OK) {
+    Error_Handler();
+  }
+
+  /* USER CODE BEGIN Check_RTC_BKUP */
+
+  /* USER CODE END Check_RTC_BKUP */
+
+  /** Initialize RTC and set the Time and Date
+   */
+  sTime.Hours = 0x0;
+  sTime.Minutes = 0x0;
+  sTime.Seconds = 0x0;
+  sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+  sTime.StoreOperation = RTC_STOREOPERATION_RESET;
+  if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD) != HAL_OK) {
+    Error_Handler();
+  }
+  sDate.WeekDay = RTC_WEEKDAY_MONDAY;
+  sDate.Month = RTC_MONTH_JANUARY;
+  sDate.Date = 0x1;
+  sDate.Year = 0x0;
+
+  if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BCD) != HAL_OK) {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN RTC_Init 2 */
+
+  /* USER CODE END RTC_Init 2 */
 }
 
 /**
