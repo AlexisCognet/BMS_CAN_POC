@@ -31,7 +31,7 @@ enum MESSAGE_TYPE {
  * @param type The type of message to be sent (see MESSAGE_TYPE enum).
  * @return true if message was successefuly sent, false otherwise.
  */
-bool SendMessage(uint8_t TxData[1], enum MESSAGE_TYPE type);
+bool sendCANMessage(uint8_t TxData[1], enum MESSAGE_TYPE type);
 
 /**
  * @brief Handle received CAN message.
