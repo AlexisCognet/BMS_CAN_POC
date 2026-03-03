@@ -47,14 +47,13 @@ bool sendCANMessage(uint8_t TxData[1], enum MESSAGE_TYPE type) {
   HAL_StatusTypeDef status;
   if ((status = HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxHeader, TxData)) !=
       HAL_OK) {
-    LOG(WARN, "Can't send FDCAN message : HAL_status=%d.\r\n", status);
+    LOG(WARN, "Can't send CAN message : HAL_status=%d.\r\n", status);
     return false;
   } else {
     if (type == ALERT_WARNING)
-      LOG(INFO, "Sent FD CAN message, type=ALERT_WARNING, code = %d.",
-          TxData[0]);
+      LOG(INFO, "Sent CAN message, type=ALERT_WARNING |code = %d.", TxData[0]);
     else if (type == ALERT_CRITICAL)
-      LOG(INFO, "Sent FD CAN message, type=ALERT_CRITICAL, code = %d.",
+      LOG(INFO, "Sent CAN message, type=ALERT_CRITICAL | code = %d.",
           TxData[0]);
   }
   return true;
@@ -63,7 +62,6 @@ bool sendCANMessage(uint8_t TxData[1], enum MESSAGE_TYPE type) {
 void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan,
                                uint32_t RxFifo0ITs) {
 
-  LOG(INFO, "FDCAN Callback triggered !");
   FDCAN_RxHeaderTypeDef RxHeader;
   uint8_t RxData[8];
 
@@ -92,7 +90,7 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan,
       else if (RxHeader.Identifier == 0x200) {
         float temperature;
         memcpy(&temperature, &RxData[0], sizeof(float));
-        LOG(INFO, "Received CAN message : ID=%x | Temperature=%.2f°C.",
+        LOG(INFO, "Received CAN message : ID=0x%x | Temperature=%.2f°C.",
             RxHeader.Identifier, temperature);
       }
     }
